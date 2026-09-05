@@ -1,0 +1,27 @@
+name = "DataDecimals"
+uuid = "3e2245cb-6932-498d-a7cf-39d39de8bde3"
+authors = ["Jacob Quinn <quinn.jacobd@gmail.com>"]
+version = "1.0.0"
+
+[deps]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[weakdeps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Parsers = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[extensions]
+DataDecimalsJSONExt = "JSON"
+DataDecimalsLinearAlgebraExt = "LinearAlgebra"
+DataDecimalsParsersExt = "Parsers"
+DataDecimalsPrintfExt = "Printf"
+
+[compat]
+JSON = "1"
+LinearAlgebra = "1"
+Parsers = "2.7, 3"
+Printf = "1"
+Random = "1"
+julia = "1.10"
