@@ -308,3 +308,28 @@ end
     @test_throws InexactError Integer(Decimal64{2}("3.50"))
     @test Int(Decimal64{2}("3.00")) === 3
 end
+
+@testset "RoundExact conversions" begin
+    RE = DataDecimals.RoundExact
+    @test rescale(Decimal{9,1}, Decimal{18,2}("1.20"), RE) === Decimal{9,1}("1.2")
+    @test rescale(Decimal{9,4}, Decimal{18,2}("1.25"), RE) === Decimal{9,4}("1.2500")
+    @test_throws InexactError rescale(Decimal{9,1}, Decimal{18,2}("1.25"), RE)
+    @test_throws InexactError rescale(Decimal{9,1}, Decimal{18,2}("0.01"), RE)
+    @test_throws OverflowError rescale(Decimal{9,4}, Decimal{18,2}("123456.78"), RE)
+    @test rescale(DecimalValue(12300, 3), 1, RE) === DecimalValue(123, 1)
+    @test_throws InexactError rescale(DecimalValue(12345, 3), 1, RE)
+    @test round(Decimal{9,1}, Decimal{18,2}("1.20"), RE) === Decimal{9,1}("1.2")
+    @test_throws InexactError round(Decimal{9,1}, Decimal{18,2}("1.25"), RE)
+    @test round(Decimal{9,1}, DecimalValue(120, 2), RE) === Decimal{9,1}("1.2")
+    @test_throws InexactError round(Decimal{9,1}, DecimalValue(125, 2), RE)
+    @test round(Int, Decimal64{2}("3.00"), RE) === 3
+    @test_throws InexactError round(Int, Decimal64{2}("3.50"), RE)
+    @test round(Decimal64{2}, 1.25, RE) === Decimal64{2}("1.25")
+    @test_throws InexactError round(Decimal64{2}, 1.005, RE)
+    @test_throws InexactError round(Decimal64{2}, 0.1, RE)
+    @test round(Decimal64{2}, 1//4, RE) === Decimal64{2}("0.25")
+    @test_throws InexactError round(Decimal64{2}, 1//3, RE)
+    @test round(Decimal64{2}, big(1)//4, RE) === Decimal64{2}("0.25")
+    @test_throws InexactError round(Decimal64{2}, big(1)//3, RE)
+    @test round(Decimal64{2}, 7, RE) === Decimal64{2}(7)
+end

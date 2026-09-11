@@ -56,7 +56,10 @@ mode is an argument:
 
 The seven accepted modes are `RoundNearest` (half-even, the default),
 `RoundNearestTiesAway`, `RoundNearestTiesUp`, `RoundToZero`, `RoundFromZero`,
-`RoundDown`, and `RoundUp`.
+`RoundDown`, and `RoundUp`. An eighth, [`DataDecimals.RoundExact`](@ref),
+requires exactness: it throws `InexactError` instead of dropping a digit,
+`Parsers.tryparse` returns `nothing`, and `Parsers.parsenext` returns
+`Parsers.RC_INVALID`.
 
 A dynamic context costs dispatch on every operation, and it makes a
 function's result depend on its caller. Neither seemed worth paying for.

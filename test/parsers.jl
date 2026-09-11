@@ -145,3 +145,44 @@ end
         @test_allocfree pn(buf)
     end
 end
+
+@testset "RoundExact parsing" begin
+    RE = DataDecimals.RoundExact
+    D2 = Decimal64{2}
+    @test Parsers.parse(D2, "1.20"; rounding=RE) === D2("1.20")
+    @test Parsers.parse(D2, "1.2000"; rounding=RE) === D2("1.20")
+    @test Parsers.parse(D2, "120e-2"; rounding=RE) === D2("1.20")
+    @test Parsers.parse(D2, "1.2300e1"; rounding=RE) === D2("12.30")
+    @test Parsers.parse(D2, "-0.00"; rounding=RE) === D2(0)
+    @test Parsers.parse(D2, "5"; rounding=RE) === D2(5)
+    @test_throws InexactError Parsers.parse(D2, "1.235"; rounding=RE)
+    @test_throws InexactError Parsers.parse(D2, "1.201e-1"; rounding=RE)
+    @test_throws InexactError Parsers.parse(D2, "0.001"; rounding=RE)
+    @test_throws OverflowError Parsers.parse(D2, "1e20"; rounding=RE)
+    @test_throws ArgumentError Parsers.parse(D2, "1.2x"; rounding=RE)
+    @test Parsers.tryparse(D2, "1.20"; rounding=RE) === D2("1.20")
+    @test Parsers.tryparse(D2, "1.235"; rounding=RE) === nothing
+    @test Parsers.tryparse(D2, "1e20"; rounding=RE) === nothing
+    # wide spellings: more digits than the storage type holds, and the sticky
+    # tail past the scanner's 77 retained digits
+    @test Parsers.tryparse(D2, "1." * "0"^40; rounding=RE) === D2(1)
+    @test Parsers.tryparse(D2, "1." * "0"^40 * "1"; rounding=RE) === nothing
+    @test Parsers.tryparse(D2, "1." * "0"^90; rounding=RE) === D2(1)
+    @test Parsers.tryparse(D2, "1." * "0"^90 * "1"; rounding=RE) === nothing
+    @test_throws InexactError Parsers.parse(D2, "1." * "0"^90 * "1"; rounding=RE)
+    @test Parsers.parse(Decimal{38,4}, "1234567890123456789012345678901234.5678"; rounding=RE) ===
+          Decimal{38,4}("1234567890123456789012345678901234.5678")
+    @test_throws InexactError Parsers.parse(Decimal{38,4}, "1234567890123456789012345678901234.56789"; rounding=RE)
+    # parsenext reports an inexact value as invalid and a wide value as overflow
+    buf = codeunits("1.20,1.235,1e30")
+    @test Parsers.parsenext(D2, buf, 1, length(buf); rounding=RE) === (D2("1.20"), 5, Parsers.RC_OK)
+    @test Parsers.parsenext(D2, buf, 6, length(buf); rounding=RE)[3] === Parsers.RC_INVALID
+    @test Parsers.parsenext(D2, buf, 12, length(buf); rounding=RE)[3] === Parsers.RC_OVERFLOW
+    @test Parsers.parsenext(D2, buf, 6, length(buf); rounding=RoundNearest)[3] === Parsers.RC_OK
+    # a DecimalValue keeps the spelled scale, so the mode has nothing to reject
+    @test Parsers.parse(DecimalValue{Int64}, "1.235"; rounding=RE) === DecimalValue(1235, 3)
+    @test Parsers.tryparse(DecimalValue{Int64}, "1." * "0"^90 * "1"; rounding=RE) === nothing
+    # the other modes are unchanged
+    @test Parsers.parse(D2, "1.235"; rounding=RoundNearest) === D2("1.24")
+    @test Parsers.parse(D2, "1.235"; rounding=RoundToZero) === D2("1.23")
+end

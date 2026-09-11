@@ -5,7 +5,7 @@
 module DataDecimalsParsersExt
 
 using DataDecimals
-using DataDecimals: DecimalValue
+using DataDecimals: DecimalValue, RoundExact
 import Parsers
 
 # This extension needs the Parsers 3 kernels, but the compat bound admits
@@ -323,6 +323,18 @@ end
     throw(OverflowError(string("value ", Parsers._q(Parsers._spanstring(buf, i, j)),
                                " does not fit in ", DT)))
 
+# Under `RoundExact` a value that fits the target only after rounding is
+# inexact, not out of range. The distinction is made on the failure path only.
+@inline _inexactfit(::Type{DT}, mag, sc, neg, sticky, mode) where {DT} =
+    mode === RoundExact && _fit(DT, mag, sc, neg, sticky, RoundToZero)[2]
+@noinline function _throwunfit(::Type{DT}, buf, i, j, mag, sc, neg, sticky, mode) where {DT}
+    _inexactfit(DT, mag, sc, neg, sticky, mode) &&
+        throw(InexactError(:parse, DT, Parsers._spanstring(buf, i, j)))
+    _throwrange(DT, buf, i, j)
+end
+@inline _unfitcode(::Type{DT}, mag, sc, neg, sticky, mode) where {DT} =
+    _inexactfit(DT, mag, sc, neg, sticky, mode) ? RC_INVALID : RC_OVERFLOW
+
 @inline function _parsewhole(::Type{DT}, buf::AbstractVector{UInt8}, i::Int, j::Int,
                              dec::UInt8, mode::RoundingMode,
                              ::Val{Throw}) where {DT, Throw}
@@ -334,7 +346,7 @@ end
         if handled
             v, fit = _fit(DT, m, sct, negt, false, mode)
             if !fit
-                Throw && _throwrange(DT, buf, i, j)
+                Throw && _throwunfit(DT, buf, i, j, m, sct, negt, false, mode)
                 return nothing
             end
             return v
@@ -365,7 +377,7 @@ end
         end
         v, fit = _fit(DT, m128, sc, neg, false, mode)
         if !fit
-            Throw && _throwrange(DT, buf, orig_i, orig_j)
+            Throw && _throwunfit(DT, buf, orig_i, orig_j, m128, sc, neg, false, mode)
             return nothing
         end
         return v
@@ -377,7 +389,7 @@ end
     end
     v, fit = _fit(DT, mag, sc, neg, sticky, mode)
     if !fit
-        Throw && _throwrange(DT, buf, orig_i, orig_j)
+        Throw && _throwunfit(DT, buf, orig_i, orig_j, mag, sc, neg, sticky, mode)
         return nothing
     end
     return v
@@ -455,7 +467,7 @@ Base.tryparse(::Type{DT}, s::AbstractString) where {DT <: _DECTARGETS} =
     ok || return (zero(DT), i, RC_INVALID)
     (nextpos > j && j == typemax(Int)) && Parsers._prefixendoverflow()
     v, fit = _fit(DT, m64, sc, neg, false, mode)
-    fit || return (zero(DT), nextpos, RC_OVERFLOW)
+    fit || return (zero(DT), nextpos, _unfitcode(DT, m64, sc, neg, false, mode))
     return (v, nextpos, RC_OK)
 end
 
@@ -466,14 +478,14 @@ end
         ok || return (zero(DT), i, RC_INVALID)
         (nextpos > j && j == typemax(Int)) && Parsers._prefixendoverflow()
         v, fit = _fit(DT, m128, sc, neg, false, mode)
-        fit || return (zero(DT), nextpos, RC_OVERFLOW)
+        fit || return (zero(DT), nextpos, _unfitcode(DT, m128, sc, neg, false, mode))
         return (v, nextpos, RC_OK)
     end
     mag, sc, neg, sticky, nextpos, ok = _scandec(b, i, j, dec)
     ok || return (zero(DT), i, RC_INVALID)
     (nextpos > j && j == typemax(Int)) && Parsers._prefixendoverflow()
     v, fit = _fit(DT, mag, sc, neg, sticky, mode)
-    fit || return (zero(DT), nextpos, RC_OVERFLOW)
+    fit || return (zero(DT), nextpos, _unfitcode(DT, mag, sc, neg, sticky, mode))
     return (v, nextpos, RC_OK)
 end
 

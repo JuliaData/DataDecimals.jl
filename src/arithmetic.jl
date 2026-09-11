@@ -111,7 +111,8 @@ end
                                 mode::RoundingMode)
     n, ovf = _scaleup(mag, k)
     if !ovf
-        q, _ = _divround(n, d, neg, mode)
+        q, inexact = _divround(n, d, neg, mode)
+        (inexact && mode === RoundExact) && _throwinexactmode()
         return (q, true)
     end
     return _scaledivround512(mag, k, d, neg, mode)
@@ -231,7 +232,7 @@ end
 Base.rem(x::D, y::D) where {D <: Decimal} = _decimalremainder(x, y, RoundToZero)
 
 for mode in (RoundNearest, RoundNearestTiesAway, RoundNearestTiesUp,
-             RoundToZero, RoundFromZero, RoundDown, RoundUp)
+             RoundToZero, RoundFromZero, RoundDown, RoundUp, RoundExact)
     MT = typeof(mode)
     @eval begin
         @inline Base.rem(x::D, y::D, ::$MT) where {D <: Decimal} =
@@ -246,7 +247,7 @@ Base.rem(x::AbstractDecimal, y::Real) = rem(promote(x, y)...)
 Base.rem(x::Real, y::AbstractDecimal) = rem(promote(x, y)...)
 
 for mode in (RoundNearest, RoundNearestTiesAway, RoundNearestTiesUp,
-             RoundToZero, RoundFromZero, RoundDown, RoundUp)
+             RoundToZero, RoundFromZero, RoundDown, RoundUp, RoundExact)
     MT = typeof(mode)
     @eval begin
         Base.rem(x::AbstractDecimal, y::AbstractDecimal, ::$MT) =
@@ -324,7 +325,8 @@ function Base.round(x::Decimal{P, S, T}, mode::RoundingMode=RoundNearest;
     digits >= S && return x
     k = _roundshift(S, digits)
     neg = _isneg(x)
-    q, _ = _scaledown(_mag(x), k, neg, mode)
+    q, inexact = _scaledown(_mag(x), k, neg, mode)
+    (inexact && mode === RoundExact) && _throwinexactround(x)
     mag, ovf = _scaleup(q, k)
     (ovf || mag > _maxmag(Decimal{P, S, T})) && _throwop(:round, x, mode)
     u = (mag % _utype(T)) % T
@@ -340,7 +342,8 @@ function Base.round(x::DecimalValue{T}, mode::RoundingMode=RoundNearest;
     digits >= scale(x) && return x
     k = _roundshift(scale(x), digits)
     neg = _isneg(x)
-    q, _ = _scaledown(_tomag256(x.unscaled), k, neg, mode)
+    q, inexact = _scaledown(_tomag256(x.unscaled), k, neg, mode)
+    (inexact && mode === RoundExact) && _throwinexactround(x)
     mag, ovf = _scaleup(q, k)
     (ovf || !_fitsigned(mag, neg, T)) && _throwvalop(:round)
     u = (mag % _utype(T)) % T
@@ -543,7 +546,7 @@ Base.rem(x::DecimalValue{T}, y::DecimalValue{T}) where {T <: StorageInt} =
     _valueremainder(x, y, RoundToZero)
 
 for mode in (RoundNearest, RoundNearestTiesAway, RoundNearestTiesUp,
-             RoundToZero, RoundFromZero, RoundDown, RoundUp)
+             RoundToZero, RoundFromZero, RoundDown, RoundUp, RoundExact)
     MT = typeof(mode)
     @eval begin
         @inline Base.rem(x::DecimalValue{T}, y::DecimalValue{T},

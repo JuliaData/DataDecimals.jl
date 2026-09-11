@@ -3,11 +3,40 @@
 # wrappers live at the bottom. No global state: the rounding mode is always an
 # explicit RoundingMode argument (statically dispatched singleton).
 
+"""
+    DataDecimals.RoundExact
+
+A rounding mode that requires the operation to be exact. Wherever a mode is
+taken, `RoundExact` never rounds: [`DataDecimals.rescale`](@ref),
+`round(D, x, RoundExact)`, `round(I, x, RoundExact)`, `round(x, RoundExact; digits)`,
+[`DataDecimals.divide`](@ref), and `div`, `rem`, and `divrem` with a mode throw
+`InexactError` when a digit would be dropped. In the Parsers extension,
+`Parsers.parse` throws `InexactError` for a value the target scale cannot hold
+exactly, `Parsers.tryparse` returns `nothing`, and `Parsers.parsenext` returns
+`Parsers.RC_INVALID`. Scaling up is always exact, so trailing zeros never fail.
+
+```jldoctest
+julia> DataDecimals.rescale(DataDecimals.Decimal64{2}, DataDecimals.Decimal64{4}("1.2300"), DataDecimals.RoundExact)
+1.23
+
+julia> DataDecimals.rescale(DataDecimals.Decimal64{2}, DataDecimals.Decimal64{4}("1.2345"), DataDecimals.RoundExact)
+ERROR: InexactError: convert(Decimal64{2}, Decimal{18,4,Int64}("1.2345"))
+[...]
+```
+"""
+const RoundExact = RoundingMode{:Exact}()
+
+@noinline _throwinexactmode() = throw(InexactError(:round, Decimal, RoundExact))
+@noinline _throwinexactround(x) = throw(InexactError(:round, typeof(x), x))
+
 # whether to increment |q| given the discarded remainder's relation to half of
 # the divisor: below (< half), tie (== half); otherwise above. Caller has
-# already handled the exact (remainder == 0) case.
+# already handled the exact (remainder == 0) case, so `RoundExact` cannot
+# proceed here; the scaling kernels below never reach this under `RoundExact`
+# and report `inexact` to their callers instead.
 @inline function _roundinc(below::Bool, tie::Bool, qodd::Bool, neg::Bool,
                            mode::RoundingMode)
+    mode === RoundExact && _throwinexactmode()
     mode === RoundToZero && return false
     mode === RoundFromZero && return true
     mode === RoundDown && return neg
@@ -35,7 +64,7 @@ end
             below = x < half
             tie = x == half
         end
-        inc = _roundinc(below, tie, false, neg, mode)
+        inc = mode === RoundExact ? false : _roundinc(below, tie, false, neg, mode)
         return (inc ? one(U) : zero(U), true)
     end
     q = _divpow10(x, k)
@@ -43,7 +72,8 @@ end
     r = x - q * p10
     r == zero(U) && return (q, false)
     half = p10 >>> 1
-    inc = _roundinc(r < half, r == half, (q & one(U)) != zero(U), neg, mode)
+    inc = mode === RoundExact ? false :
+          _roundinc(r < half, r == half, (q & one(U)) != zero(U), neg, mode)
     return (inc ? q + one(U) : q, true)
 end
 
@@ -54,7 +84,7 @@ end
                             sticky::Bool) where {U <: Unsigned}
     sticky || return _scaledown(x, k, neg, mode)
     if k == 0
-        inc = _roundinc(true, false, (x & one(U)) != zero(U), neg, mode)
+        inc = mode === RoundExact ? false : _roundinc(true, false, (x & one(U)) != zero(U), neg, mode)
         return (inc ? x + one(U) : x, true)
     end
     if x == zero(U) || k >= _ndigits10(x)
@@ -64,14 +94,15 @@ end
         if x != zero(U) && k1 <= _halfmax(U) && k1 <= _tablemax(U)
             below = x < U(5) * _upow10(U, k1)
         end
-        inc = _roundinc(below, false, false, neg, mode)
+        inc = mode === RoundExact ? false : _roundinc(below, false, false, neg, mode)
         return (inc ? one(U) : zero(U), true)
     end
     q = _divpow10(x, k)
     p10 = _upow10(U, k)
     r = x - q * p10
     half = p10 >>> 1
-    inc = _roundinc(r < half, false, (q & one(U)) != zero(U), neg, mode)
+    inc = mode === RoundExact ? false :
+          _roundinc(r < half, false, (q & one(U)) != zero(U), neg, mode)
     return (inc ? q + one(U) : q, true)
 end
 

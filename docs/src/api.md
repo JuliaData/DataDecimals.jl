@@ -28,6 +28,7 @@ DataDecimals.Decimal256
 DataDecimals.rescale
 DataDecimals.divide
 DataDecimals.normalize
+DataDecimals.RoundExact
 ```
 
 ## Wire and byte-level API
