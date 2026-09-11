@@ -148,7 +148,9 @@ subtyping and there are no `NaN` or `Inf` values: `isfinite` is always
 
 Seven rounding modes are accepted wherever a mode is taken: `RoundNearest`
 (half-even, the default), `RoundNearestTiesAway`, `RoundNearestTiesUp`,
-`RoundToZero`, `RoundFromZero`, `RoundDown`, and `RoundUp`.
+`RoundToZero`, `RoundFromZero`, `RoundDown`, and `RoundUp`. An eighth,
+`DataDecimals.RoundExact`, requires exactness: it throws `InexactError`
+instead of dropping a digit, and `Parsers.tryparse` returns `nothing`.
 
 ## Extensions
 
@@ -168,6 +170,7 @@ These load as package extensions when the companion package is present.
   Parsers.parse(DataDecimals.Decimal64{2}, "1234.56")                    # 1234.56
   Parsers.parse(DataDecimals.Decimal64{2}, "1,25"; decimal=',')          # 1.25
   Parsers.parse(DataDecimals.Decimal64{2}, "1.005"; rounding=RoundUp)    # 1.01
+  Parsers.tryparse(DataDecimals.Decimal64{2}, "1.005"; rounding=DataDecimals.RoundExact)  # nothing
   buf = codeunits("12.34,56.78")
   Parsers.parsenext(DataDecimals.Decimal64{2}, buf, 1, length(buf))      # (12.34, 6, Parsers.RC_OK)
   ```

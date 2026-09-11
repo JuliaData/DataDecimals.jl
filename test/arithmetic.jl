@@ -308,3 +308,22 @@ end
     @test occursin("+", sprint(showerror, try a + b catch e; e end))
     @test occursin("-", sprint(showerror, try a - b catch e; e end))
 end
+
+@testset "RoundExact arithmetic" begin
+    RE = DataDecimals.RoundExact
+    D2 = Decimal64{2}
+    @test DataDecimals.divide(D2("1.00"), D2("4.00"), RE) == D2("0.25")
+    @test_throws InexactError DataDecimals.divide(D2("1.00"), D2("3.00"), RE)
+    @test div(D2("6.00"), D2("3.00"), RE) === D2(2)
+    @test_throws InexactError div(D2("7.00"), D2("3.00"), RE)
+    @test rem(D2("6.00"), D2("3.00"), RE) === D2(0)
+    @test_throws InexactError rem(D2("7.00"), D2("3.00"), RE)
+    @test divrem(D2("6.00"), D2("3.00"), RE) === (D2(2), D2(0))
+    @test_throws InexactError divrem(D2("7.00"), D2("3.00"), RE)
+    @test round(D2("1.20"), RE; digits=1) === D2("1.20")
+    @test round(D2("1.00"), RE) === D2("1.00")
+    @test_throws InexactError round(D2("1.25"), RE; digits=1)
+    @test_throws InexactError round(D2("1.20"), RE)
+    @test round(DecimalValue(1200, 3), RE; digits=1) === DecimalValue(1200, 3)
+    @test_throws InexactError round(DecimalValue(1250, 3), RE; digits=1)
+end

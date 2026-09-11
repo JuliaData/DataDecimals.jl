@@ -70,7 +70,7 @@ function _fromrational(::Type{Decimal{P, S, T}}, x::Rational, mode) where {P, S,
     num, ovf = _scaleup(n, S)
     ovf && return _fromrational_big(Decimal{P, S, T}, x, mode)
     q, inexact = _divround(num, d, neg, mode)
-    (inexact && mode === nothing) && _throwinexact(Decimal{P, S, T}, x)
+    (inexact && (mode === nothing || mode === RoundExact)) && _throwinexact(Decimal{P, S, T}, x)
     return _fromuval(Decimal{P, S, T}, q, neg, x)
 end
 
@@ -82,7 +82,7 @@ end
     den = abs(_tobigsigned(x.den))
     q, r = divrem(num, den)
     if r != 0
-        mode === nothing && _throwinexact(Decimal{P, S, T}, x)
+        (mode === nothing || mode === RoundExact) && _throwinexact(Decimal{P, S, T}, x)
         neg = x.num < zero(x.num)
         inc = _roundinc(2r < den, 2r == den, isodd(q), neg, mode)
         inc && (q += 1)
@@ -101,6 +101,8 @@ Decimal{P, S, T}(x::Rational{BigInt}) where {P, S, T <: StorageInt} =
     q, r = _divrem_wide(n, d)
     return (q, r != zero(UInt256))
 end
+@inline _divround(n::UInt256, d::UInt256, neg::Bool, ::typeof(RoundExact)) =
+    _divround(n, d, neg, nothing)
 
 # ---- AbstractFloat -> Decimal ----
 
@@ -139,7 +141,8 @@ function _fromfloat(::Type{Decimal{P, S, T}}, x::AbstractFloat,
     # u = round(m * 5^k / 10^(k-S)); m*5^k fits 256 bits for k <= 87 (m < 2^53)
     hi, lo = _mul256full(m, _upow5_256(k))
     hi != zero(UInt256) && _throwoverflow(Decimal{P, S, T}, x)
-    q, _ = _scaledown(lo, k - S, neg, mode)
+    q, inexact = _scaledown(lo, k - S, neg, mode)
+    (inexact && mode === RoundExact) && _throwinexact(Decimal{P, S, T}, x)
     return _fromuval(Decimal{P, S, T}, q, neg, x)
 end
 
@@ -151,11 +154,13 @@ end
     p = m * _upow10(UInt128, S)
     if k >= 128
         q = zero(UInt128)
+        mode === RoundExact && _throwinexact(Decimal{P, S, T}, x)
         inc = _roundinc(true, false, false, neg, mode)
     else
         q = p >> k
         r = p & ((one(UInt128) << k) - one(UInt128))
         half = one(UInt128) << (k - 1)
+        (r != zero(UInt128) && mode === RoundExact) && _throwinexact(Decimal{P, S, T}, x)
         inc = r != zero(UInt128) && _roundinc(r < half, r == half, isodd(q), neg, mode)
     end
     inc && (q += one(UInt128))
@@ -180,6 +185,7 @@ end
             d = big(10)^(k - S)
             q, r = divrem(n, d)
             if r != 0
+                mode === RoundExact && _throwinexact(Decimal{P, S, T}, x)
                 inc = _roundinc(2r < d, 2r == d, isodd(q), neg, mode)
                 inc && (q += 1)
             end
@@ -213,7 +219,7 @@ function _torescaled(::Type{Decimal{P, S, T}}, m::UInt256, neg::Bool, s::Int,
     else
         actualmode = mode === nothing ? RoundToZero : mode
         mag, inexact = _scaledown(m, s - S, neg, actualmode)
-        (inexact && mode === nothing) && _throwinexact(Decimal{P, S, T}, x)
+        (inexact && (mode === nothing || mode === RoundExact)) && _throwinexact(Decimal{P, S, T}, x)
     end
     return _fromuval(Decimal{P, S, T}, mag, neg, x)
 end
@@ -225,7 +231,8 @@ end
 @inline function _fitnarrow(::Type{Decimal{P, S, T}}, m::U, sc::Int, neg::Bool,
                             mode::RoundingMode) where {P, S, T <: StorageInt, U <: Unsigned}
     if sc > S
-        q, _ = _scaledown(m, sc - S, neg, mode)
+        q, inexact = _scaledown(m, sc - S, neg, mode)
+        (inexact && mode === RoundExact) && return (zero(Decimal{P, S, T}), false)
     else
         q, ovf = _scaleup(m, S - sc)
         ovf && return (zero(Decimal{P, S, T}), false)
@@ -244,11 +251,13 @@ end
         return _fitnarrow(Decimal{P, S, T}, (mag % U), sc, neg, mode)
     end
     if sc > S
-        q, _ = _scaledown(mag, sc - S, neg, mode, sticky)
+        q, inexact = _scaledown(mag, sc - S, neg, mode, sticky)
+        (inexact && mode === RoundExact) && return (zero(Decimal{P, S, T}), false)
     else
         q, ovf = _scaleup(mag, S - sc)
         ovf && return (zero(Decimal{P, S, T}), false)
         if sticky
+            mode === RoundExact && return (zero(Decimal{P, S, T}), false)
             inc = _roundinc(true, false, (q & one(UInt256)) != zero(UInt256), neg, mode)
             inc && (q += one(UInt256))
         end
@@ -423,9 +432,10 @@ runtime scale `s`, which must be in `0:16383`.
 
 `mode` is any of `RoundNearest` (half-even, the default),
 `RoundNearestTiesAway`, `RoundNearestTiesUp`, `RoundToZero`, `RoundFromZero`,
-`RoundDown`, `RoundUp`. Rounding *up* in scale is always exact, so `mode` only
-matters when digits are dropped; overflowing the target's precision still
-throws `OverflowError`.
+`RoundDown`, `RoundUp`, or [`DataDecimals.RoundExact`](@ref), which throws
+`InexactError` instead of dropping a digit. Rounding *up* in scale is always
+exact, so `mode` only matters when digits are dropped; overflowing the
+target's precision still throws `OverflowError`.
 
 `convert`/constructors are the exact-or-throw counterpart, and
 `round(D, x, mode)` is the same operation spelled Base's way.
@@ -453,7 +463,8 @@ function rescale(x::DecimalValue{T}, s::Integer,
         mag, ovf = _scaleup(m, target - scale(x))
         ovf && _throwoverflow(DecimalValue{T}, x)
     else
-        mag, _ = _scaledown(m, scale(x) - target, neg, mode)
+        mag, inexact = _scaledown(m, scale(x) - target, neg, mode)
+        (inexact && mode === RoundExact) && _throwinexact(DecimalValue{T}, x)
     end
     !_fitsigned(mag, neg, T) && _throwoverflow(DecimalValue{T}, x)
     u = (mag % _utype(T)) % T
@@ -466,7 +477,7 @@ function _tointeger(::Type{I}, x::AbstractDecimal, mode) where {I}
     neg = _isneg(x)
     actualmode = mode === nothing ? RoundToZero : mode
     q, inexact = _scaledown(_tomag256(x.unscaled), scale(x), neg, actualmode)
-    (inexact && mode === nothing) && _throwinexact(I, x)
+    (inexact && (mode === nothing || mode === RoundExact)) && _throwinexact(I, x)
     # no magnitude exceeds 2^255, so the two's-complement round-trip is exact
     sv = q % Int256
     return convert(I, neg ? -sv : sv)
