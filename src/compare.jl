@@ -72,6 +72,8 @@ Base.isless(x::AbstractDecimal, y::Rational) = _cmprational(x, y) < 0
 Base.isless(x::Rational, y::AbstractDecimal) = _cmprational(y, x) > 0
 Base.:(<)(x::AbstractDecimal, y::Rational) = _cmprational(x, y) < 0
 Base.:(<)(x::Rational, y::AbstractDecimal) = _cmprational(y, x) > 0
+Base.:(<=)(x::AbstractDecimal, y::Rational) = _cmprational(x, y) <= 0
+Base.:(<=)(x::Rational, y::AbstractDecimal) = _cmprational(y, x) >= 0
 
 # ---- vs AbstractFloat ----
 
@@ -168,6 +170,9 @@ function Base.isless(x::AbstractFloat, y::AbstractDecimal)
 end
 Base.:(<)(x::AbstractDecimal, y::AbstractFloat) = _cmpfloat(x, y) == -1
 Base.:(<)(x::AbstractFloat, y::AbstractDecimal) = _cmpfloat(y, x) == 1
+# Base's mixed-type <= promotes, which rounds the decimal to the float type
+Base.:(<=)(x::AbstractDecimal, y::AbstractFloat) = _cmpfloat(x, y) <= 0
+Base.:(<=)(x::AbstractFloat, y::AbstractDecimal) = 0 <= _cmpfloat(y, x) <= 1
 
 # ---- hashing ----
 
