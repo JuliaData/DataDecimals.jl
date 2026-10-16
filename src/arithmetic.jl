@@ -146,7 +146,9 @@ scale(y))` with `mode`. `x / y` is exactly `DataDecimals.divide(x, y, RoundNeare
 an argument, never a context.
 
 `mode` is any of `RoundNearest`, `RoundNearestTiesAway`, `RoundNearestTiesUp`,
-`RoundToZero`, `RoundFromZero`, `RoundDown`, `RoundUp`. Dividing by zero throws
+`RoundToZero`, `RoundFromZero`, `RoundDown`, `RoundUp`, or
+[`DataDecimals.RoundExact`](@ref), which throws `InexactError` for an inexact
+quotient. Dividing by zero throws
 `DivideError`; a quotient too large for the result type throws `OverflowError`.
 For `Decimal` operands the result type is derived from the operand parameters
 (the widest quotient that can occur, capped at the 76-digit tier); for
