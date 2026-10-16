@@ -70,7 +70,7 @@ Constructors are exact or they throw: `Decimal{18,2}(5)`,
 `Decimal{18,2}(1//4)`, and `convert` raise `InexactError`/`OverflowError`
 rather than round. The exceptions are construction from `AbstractFloat`, which
 rounds half-even at scale `S` like every cross-representation float conversion
-in Base, and construction from a string, which is `parse` (also half-even).
+in Base, and construction from a string, which rounds half-even like `parse`.
 [`DataDecimals.rescale`](@ref) and `round(D, x, mode)` are the explicitly-rounding forms.
 
 `reinterpret(Decimal{P,S,T}, u)` builds a value straight from an unscaled
@@ -168,7 +168,8 @@ arithmetic aligns scales at run time rather than at compile time, so prefer
 
 Like `Decimal`, conversions in are exact-or-throw except from `AbstractFloat`,
 where `DataDecimals.DecimalValue(x)` produces the *exact* binary expansion of `x` (that is
-what a runtime scale is for) rather than rounding to a fixed scale.
+what a runtime scale is for) rather than rounding to a fixed scale. It throws
+`OverflowError` when that expansion does not fit `T`, as for `1e-20` in `Int256`.
 [`DataDecimals.rescale`](@ref) moves a value to another scale.
 
 ```jldoctest
