@@ -205,6 +205,17 @@ end
     @test !(Decimal{18,2}(1) < NaN) && isless(Decimal{18,2}(1), NaN)
     @test Decimal{18,2}(1) < Inf && -Inf < Decimal{18,2}(1)
     @test isequal(Decimal{18,2}(1), Decimal{18,2}(1))
+    # <= and >= agree with the exact < and == against the floats nearest a decimal
+    for s in ("0.10", "-0.08", "1234.56", "-9.48"), F in (Float16, Float32, Float64, BigFloat)
+        a = Decimal{18,2}(s)
+        for f in (F(a), nextfloat(F(a)), prevfloat(F(a)))
+            @test (a <= f) == (a < f || a == f)
+            @test (f <= a) == (f < a || f == a)
+            @test (a >= f) == (f <= a)
+        end
+        @test !(a <= F(NaN)) && !(F(NaN) <= a)
+    end
+    @test Decimal{18,2}("-1.50") <= UInt64(3)//UInt64(2) && UInt64(3)//UInt64(2) >= Decimal{18,2}("-1.50")
 end
 
 @testset "hashing" begin
