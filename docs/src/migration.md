@@ -123,7 +123,7 @@ Worth knowing about coming from 0.x:
 - Exact `Rational` conversions in both directions, correctly rounded
   `Float64` / `Float32` / `Float16`, and exact `BigFloat` at any requested
   precision and mode.
-- The Parsers, Printf, JSON, and LinearAlgebra extensions.
+- Printf formatting and the Parsers, JSON, and LinearAlgebra extensions.
 - SIMD broadcast kernels for `+`, `-`, `*` and a vectorized `sum`.
 - `typemin` / `typemax` / `eps` / `floatmin` / `floatmax` / `widen`.
 

@@ -154,7 +154,8 @@ instead of dropping a digit, and `Parsers.tryparse` returns `nothing`.
 
 ## Extensions
 
-These load as package extensions when the companion package is present.
+The Parsers, JSON, and LinearAlgebra integrations load as package extensions
+when the companion package is present. The Printf integration is always loaded.
 
 - **Parsers.jl** provides byte-level `Parsers.parse`, `Parsers.tryparse`, and
   `Parsers.parsenext` over strings or byte spans, with `decimal=` and

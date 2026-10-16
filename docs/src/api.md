@@ -76,7 +76,7 @@ Other
 
 ## Extension entry points
 
-Available when the corresponding package is loaded; see
+Available when the corresponding package is loaded (Printf always is); see
 [Extensions](@ref) in the manual.
 
 `Parsers.parse`, `Parsers.tryparse`, `Parsers.parsenext`

@@ -250,8 +250,9 @@ would carry are.
 
 ## Extensions
 
-These load automatically as package extensions when the companion package is
-present.
+The Parsers, JSON, and LinearAlgebra integrations load automatically as
+package extensions when the companion package is present. The Printf
+integration is always loaded.
 
 ### Parsers.jl
 
