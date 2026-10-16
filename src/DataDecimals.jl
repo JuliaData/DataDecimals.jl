@@ -1,5 +1,8 @@
 module DataDecimals
 
+# Not an extension: Julia 1.10 preloads Printf and LinearAlgebra, and two extensions on
+# preloaded triggers deadlock its parallel precompile before 1.10.12 (JuliaLang/julia#62343).
+import Printf
 import Random
 
 export Decimal, Decimal64, @dec_str
@@ -18,6 +21,7 @@ include("arithmetic.jl")
 include("broadcast.jl")
 include("format.jl")
 include("show.jl")
+include("printf.jl")
 include("literals.jl")
 include("random.jl")
 

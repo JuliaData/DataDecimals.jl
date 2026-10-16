@@ -136,8 +136,8 @@ screen with zeros. Two-argument `show` gives the typed constructor form,
 use.
 
 `Printf`'s `%f`/`%e`/`%g` round in decimal before conversion to a sufficiently
-precise `BigFloat`; `%d` is exact-or-`InexactError`. `JSON.json` emits exact digits.
-Both are package extensions.
+precise `BigFloat`; `%d` is exact-or-`InexactError`. `JSON.json` emits exact digits
+through a package extension.
 
 ## The implicit `Real` interface
 

@@ -1,11 +1,5 @@
 # Decimal rounding precedes binary conversion: a BigFloat approximation alone
 # can land on the wrong side of an exact decimal tie (2.675 at two places).
-module DataDecimalsPrintfExt
-
-using DataDecimals
-using DataDecimals: AbstractDecimal
-using DataDecimals: _mag, _ndigits10, _scaledown, scale
-import Printf
 
 @static if isdefined(Printf, :toint)
     Printf.toint(x::AbstractDecimal) = Integer(x)
@@ -15,9 +9,9 @@ end
     Printf.tofloat(x::AbstractDecimal) = BigFloat(x; precision=1024)
 end
 
-const DecimalFormats = Union{Val{'f'}, Val{'F'}, Val{'e'}, Val{'E'}, Val{'g'}, Val{'G'}}
+const _DecimalFormats = Union{Val{'f'}, Val{'F'}, Val{'e'}, Val{'E'}, Val{'g'}, Val{'G'}}
 
-function Printf.fmt(buf, pos, x::AbstractDecimal, spec::Printf.Spec{T}) where {T <: DecimalFormats}
+function Printf.fmt(buf, pos, x::AbstractDecimal, spec::Printf.Spec{T}) where {T <: _DecimalFormats}
     s = scale(x)
     nd = _ndigits10(_mag(x))
     places = if T <: Union{Val{'f'}, Val{'F'}}
@@ -41,5 +35,3 @@ function Printf.fmt(buf, pos, x::AbstractDecimal, spec::Printf.Spec{T}) where {T
     end
     return Printf.fmt(buf, pos, value, spec)
 end
-
-end # module
