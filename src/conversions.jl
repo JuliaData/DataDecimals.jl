@@ -626,7 +626,7 @@ function Base.BigFloat(
     num = BigFloat(numbig; precision=numbits)
     den = BigFloat(denbig; precision=denbits)
     result = BigFloat(; precision)
-    ccall((:mpfr_div, :libmpfr), Int32,
+    ccall((:mpfr_div, Base.MPFR.libmpfr), Int32,
           (Ref{BigFloat}, Ref{BigFloat}, Ref{BigFloat}, Int32),
           result, num, den, mode)
     return result
