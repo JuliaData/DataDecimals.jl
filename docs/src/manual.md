@@ -305,6 +305,17 @@ JSON.json((price = DataDecimals.Decimal64{2}("1234.56"), qty = 3))
 # {"price":1234.56,"qty":3}
 ```
 
+With JSON 1.8 or later, a JSON number read into a `Decimal` or `DecimalValue`
+is parsed from its digits instead of through `Float64`. Every digit is kept, a
+`Decimal` rounds half-even to its scale once, a `DecimalValue` keeps the
+number's scale, and a value that does not fit throws `OverflowError`:
+
+```julia
+JSON.parse("12.345", DataDecimals.Decimal64{2})      # Decimal{18,2,Int64}("12.34")
+JSON.parse("12.50", DataDecimals.DecimalValue)       # DecimalValue{Int64}("12.50")
+JSON.parse("{\"price\": 0.1}", @NamedTuple{price::DataDecimals.Decimal64{2}})
+```
+
 ### LinearAlgebra.jl
 
 `A*B`, `dot`, `tr`, `A+B`, and `kron` stay exact decimal, widening the result

@@ -85,8 +85,9 @@ Available when the corresponding package is loaded; see
 `Printf.tofloat`, `Printf.toint`
 : exact `%f` / `%e` / `%g` and exact-or-`InexactError` `%d`.
 
-`JSON.tostring`
-: JSON numbers carrying the exact digits (JSON 1.x).
+`JSON.tostring`, `JSON.parse`
+: JSON numbers carrying the exact digits (JSON 1.x); reading a number into a
+  decimal parses its digits (JSON 1.8 or later).
 
 `LinearAlgebra` factorizations
 : `lu`, `cholesky`, `qr`, `svd`, `eigen`, `hessenberg`, `schur`, `lq`, `det`,

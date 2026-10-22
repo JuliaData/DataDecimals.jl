@@ -22,7 +22,8 @@ end
     include("printf.jl")
     include("release.jl")
     include("fastpaths.jl")
-    # JSON 1 + Parsers 2 has its own CI environment in test/json.
     include("parsers.jl")
+    # test/json runs json.jl again with Parsers 2.
+    include("json.jl")
     include("trim_compile_tests.jl")
 end

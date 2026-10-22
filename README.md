@@ -183,6 +183,9 @@ These load as package extensions when the companion package is present.
 - **JSON.jl** (1.x): decimals serialize as JSON numbers with their exact
   digits, neither as strings nor `Float64`-rounded, so
   `JSON.json((price = DataDecimals.Decimal64{2}("1234.56"),))` gives `{"price":1234.56}`.
+  Reading a JSON number into a decimal type (JSON 1.8 or later) parses its
+  digits: `JSON.parse("12.345", DataDecimals.Decimal64{2})` is `12.34`, the same
+  as the string constructor, and a `DecimalValue` keeps the number's scale.
 
 - **LinearAlgebra.jl**: `A*B`, `dot`, `tr`, and `A+B` stay exact decimal.
   Factorizations (`lu`, `qr`, `svd`, `eigen`, `det`, `inv`, `\`, and the rest)
